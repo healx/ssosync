@@ -26,10 +26,13 @@ import (
 	"github.com/awslabs/ssosync/internal/google"
 	"github.com/hashicorp/go-retryablehttp"
 
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	admin "google.golang.org/api/admin/directory/v1"
 )
+
+// Aiasing log.Fields to Fields as the `log` package get shadowed by locally
+// assignment to the `log` variable
+type Fields = log.Fields
 
 // SyncGSuite is the interface for synchronizing users/groups
 type SyncGSuite interface {
@@ -239,7 +242,7 @@ func (s *syncGSuite) SyncGroups(query string) error {
 				log.WithField("group", g.Email).Warn("Error creating group in AWS")
 				return err
 			}
-			log.WithFields(logrus.Fields{
+			log.WithFields(Fields{
 				"group": newGroup.DisplayName,
 				"id":    newGroup.ID,
 			}).Info("Group created successfully in AWS")
@@ -251,7 +254,7 @@ func (s *syncGSuite) SyncGroups(query string) error {
 			log.WithField("group", g.Email).Warn("Error getting group members from Google")
 			return err
 		}
-		log.WithFields(logrus.Fields{
+		log.WithFields(Fields{
 			"group": g.Email,
 			"count": len(groupMembers),
 		}).Info("Group members retrieved from Google")
@@ -266,7 +269,7 @@ func (s *syncGSuite) SyncGroups(query string) error {
 			log.WithField("user", u.Username).Debug("Checking user is in group already")
 			b, err := s.aws.IsUserInGroup(u, group)
 			if err != nil {
-				log.WithFields(logrus.Fields{
+				log.WithFields(Fields{
 					"user":  u.Username,
 					"group": group.DisplayName,
 				}).Warn("Error checking user membership in AWS group")
@@ -274,38 +277,38 @@ func (s *syncGSuite) SyncGroups(query string) error {
 			}
 			if _, ok := memberList[u.Username]; ok {
 				if !b {
-					log.WithFields(logrus.Fields{
+					log.WithFields(Fields{
 						"user":  u.Username,
 						"group": group.DisplayName,
 					}).Info("Adding user to group")
 					err := s.aws.AddUserToGroup(u, group)
 					if err != nil {
-						log.WithFields(logrus.Fields{
+						log.WithFields(Fields{
 							"user":  u.Username,
 							"group": group.DisplayName,
 						}).Warn("Error adding user to group in AWS")
 						return err
 					}
-					log.WithFields(logrus.Fields{
+					log.WithFields(Fields{
 						"user":  u.Username,
 						"group": group.DisplayName,
 					}).Info("User added to group successfully in AWS")
 				}
 			} else {
 				if b {
-					log.WithFields(logrus.Fields{
+					log.WithFields(Fields{
 						"user":  u.Username,
 						"group": group.DisplayName,
 					}).Warn("Removing user from group")
 					err := s.aws.RemoveUserFromGroup(u, group)
 					if err != nil {
-						log.WithFields(logrus.Fields{
+						log.WithFields(Fields{
 							"user":  u.Username,
 							"group": group.DisplayName,
 						}).Warn("Error removing user from group in AWS")
 						return err
 					}
-					log.WithFields(logrus.Fields{
+					log.WithFields(Fields{
 						"user":  u.Username,
 						"group": group.DisplayName,
 					}).Info("User removed from group successfully in AWS")
@@ -472,13 +475,13 @@ func (s *syncGSuite) SyncGroupsUsers(query string) error {
 			log.WithField("user", awsUserFull.Username).Info("adding user to group")
 			err = s.aws.AddUserToGroup(awsUserFull, awsGroup)
 			if err != nil {
-				log.WithFields(logrus.Fields{
+				log.WithFields(Fields{
 					"user":  awsUserFull.Username,
 					"group": awsGroup.DisplayName,
 				}).Warn("Error adding user to group in AWS")
 				return err
 			}
-			log.WithFields(logrus.Fields{
+			log.WithFields(Fields{
 				"user":  awsUserFull.Username,
 				"group": awsGroup.DisplayName,
 			}).Info("User added to group successfully in AWS")
@@ -501,7 +504,7 @@ func (s *syncGSuite) SyncGroupsUsers(query string) error {
 			log.WithField("user", awsUserFull.Username).Debug("checking user is in group already")
 			b, err := s.aws.IsUserInGroup(awsUserFull, awsGroup)
 			if err != nil {
-				log.WithFields(logrus.Fields{
+				log.WithFields(Fields{
 					"user":  awsUserFull.Username,
 					"group": awsGroup.DisplayName,
 				}).Warn("Error checking user membership in AWS group")
@@ -511,13 +514,13 @@ func (s *syncGSuite) SyncGroupsUsers(query string) error {
 				log.WithField("user", awsUserFull.Username).Info("adding user to group")
 				err := s.aws.AddUserToGroup(awsUserFull, awsGroup)
 				if err != nil {
-					log.WithFields(logrus.Fields{
+					log.WithFields(Fields{
 						"user":  awsUserFull.Username,
 						"group": awsGroup.DisplayName,
 					}).Warn("Error adding user to group in AWS")
 					return err
 				}
-				log.WithFields(logrus.Fields{
+				log.WithFields(Fields{
 					"user":  awsUserFull.Username,
 					"group": awsGroup.DisplayName,
 				}).Info("User added to group successfully in AWS")
@@ -527,13 +530,13 @@ func (s *syncGSuite) SyncGroupsUsers(query string) error {
 			log.WithField("user", awsUser.Username).Warn("removing user from group")
 			err := s.aws.RemoveUserFromGroup(awsUser, awsGroup)
 			if err != nil {
-				log.WithFields(logrus.Fields{
+				log.WithFields(Fields{
 					"user":  awsUser.Username,
 					"group": awsGroup.DisplayName,
 				}).Warn("Error removing user from group in AWS")
 				return err
 			}
-			log.WithFields(logrus.Fields{
+			log.WithFields(Fields{
 				"user":  awsUser.Username,
 				"group": awsGroup.DisplayName,
 			}).Info("User removed from group successfully in AWS")
@@ -603,7 +606,7 @@ func (s *syncGSuite) getGoogleGroupsAndUsers(googleGroups []*admin.Group) ([]*ad
 				log.WithField("email", m.Email).Debug("Ignoring Unknown User")
 				continue
 			}
-			log.WithFields(logrus.Fields{
+			log.WithFields(Fields{
 				"email":      u[0].PrimaryEmail,
 				"givenName":  u[0].Name.GivenName,
 				"familyName": u[0].Name.FamilyName,
@@ -615,7 +618,7 @@ func (s *syncGSuite) getGoogleGroupsAndUsers(googleGroups []*admin.Group) ([]*ad
 			}
 		}
 		gGroupsUsers[g.Name] = membersUsers
-		log.WithFields(logrus.Fields{
+		log.WithFields(Fields{
 			"group": g.Name,
 			"count": len(membersUsers),
 		}).Info("Group members added to map")
@@ -648,7 +651,7 @@ func (s *syncGSuite) getAWSGroupsAndUsers(awsGroups []*aws.Group, awsUsers []*aw
 			log.Debug("checking if user is member of")
 			found, err := s.aws.IsUserInGroup(user, awsGroup)
 			if err != nil {
-				log.WithFields(logrus.Fields{
+				log.WithFields(Fields{
 					"user":  user.Username,
 					"group": awsGroup.DisplayName,
 				}).Warn("Error checking user membership in AWS group")
