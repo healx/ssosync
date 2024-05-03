@@ -337,6 +337,10 @@ func (s *syncGSuite) SyncGroupsUsers(queryGroups string, queryUsers string) erro
 	log.Info("syncing changes")
 	// delete aws users (deleted in google)
 	log.Debug("deleting aws users deleted in google")
+	if !checkUserDeletionThreshold(delAWSUsers) {
+		log.Error("Deletion threshold exceeded for users")
+		return errors.New("deletion threshold exceeded for users")
+	}
 	for _, awsUser := range delAWSUsers {
 
 		log := log.WithFields(log.Fields{"user": awsUser.Username})
@@ -490,6 +494,10 @@ func (s *syncGSuite) SyncGroupsUsers(queryGroups string, queryUsers string) erro
 
 	// delete aws groups (deleted in google)
 	log.Debug("delete aws groups deleted in google")
+	if !checkGroupDeletionThreshold(delAWSGroups) {
+		log.Error("Deletion threshold exceeded for groups")
+		return errors.New("deletion threshold exceeded for groups")
+	}
 	for _, awsGroup := range delAWSGroups {
 
 		log := log.WithFields(log.Fields{"group": awsGroup.DisplayName})
@@ -1091,4 +1099,24 @@ func (s *syncGSuite) getGoogleUsersInGroup(group *admin.Group, userCache map[str
         }
 
         return membersUsers
+}
+
+// checkUserDeletionThreshold checks if the number of users to be deleted exceeds the threshold.
+func checkUserDeletionThreshold(users []*aws.User) bool {
+    const deletionThreshold = 4 // Define the maximum number of users that can be deleted at once.
+    if len(users) > deletionThreshold {
+        log.Warnf("Attempt to delete %d users, which exceeds the threshold of %d", len(users), deletionThreshold)
+        return false
+    }
+    return true
+}
+
+// checkGroupDeletionThreshold checks if the number of groups to be deleted exceeds the threshold.
+func checkGroupDeletionThreshold(groups []*aws.Group) bool {
+    const deletionThreshold = 4 // Define the maximum number of groups that can be deleted at once.
+    if len(groups) > deletionThreshold {
+        log.Warnf("Attempt to delete %d groups, which exceeds the threshold of %d", len(groups), deletionThreshold)
+        return false
+    }
+    return true
 }
