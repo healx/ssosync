@@ -402,6 +402,10 @@ func (s *syncGSuite) SyncGroupsUsers(query string) error {
 	log.Info("syncing changes")
 	// delete aws users (deleted in google)
 	log.Debug("deleting aws users deleted in google")
+	if !checkUserDeletionThreshold(delAWSUsers) {
+		log.Error("Deletion threshold exceeded for users")
+		return errors.New("deletion threshold exceeded for users")
+	}
 	for _, awsUser := range delAWSUsers {
 		log := log.WithFields(log.Fields{"user": awsUser.Username})
 		log.Debug("finding user")
@@ -544,6 +548,10 @@ func (s *syncGSuite) SyncGroupsUsers(query string) error {
 	}
 	// delete aws groups (deleted in google)
 	log.Debug("delete aws groups deleted in google")
+	if !checkGroupDeletionThreshold(delAWSGroups) {
+		log.Error("Deletion threshold exceeded for groups")
+		return errors.New("deletion threshold exceeded for groups")
+	}
 	for _, awsGroup := range delAWSGroups {
 		log := log.WithFields(log.Fields{"group": awsGroup.DisplayName})
 		log.Debug("finding group")
@@ -907,4 +915,22 @@ func (s *syncGSuite) includeGroup(name string) bool {
 	}
 
 	return false
+}
+
+func checkUserDeletionThreshold(users []*aws.User) bool {
+    const deletionThreshold = 2
+    if len(users) > deletionThreshold {
+        log.Warnf("Attempting to delete %d users, which exceeds the threshold of %d", len(users), deletionThreshold)
+        return false
+    }
+    return true
+}
+
+func checkGroupDeletionThreshold(groups []*aws.Group) bool {
+    const deletionThreshold = 2
+    if len(groups) > deletionThreshold {
+        log.Warnf("Attempting to delete %d groups, which exceeds the threshold of %d", len(groups), deletionThreshold)
+        return false
+    }
+    return true
 }
