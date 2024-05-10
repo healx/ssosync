@@ -918,7 +918,7 @@ func (s *syncGSuite) includeGroup(name string) bool {
 }
 
 func checkUserDeletionThreshold(users []*aws.User) bool {
-    const deletionThreshold = 4
+    const deletionThreshold = 2
     if len(users) > deletionThreshold {
         log.Warnf("Attempting to delete %d users, which exceeds the threshold of %d", len(users), deletionThreshold)
         return false
@@ -927,7 +927,7 @@ func checkUserDeletionThreshold(users []*aws.User) bool {
 }
 
 func checkGroupDeletionThreshold(groups []*aws.Group) bool {
-    const deletionThreshold = 4
+    const deletionThreshold = 2
     if len(groups) > deletionThreshold {
         log.Warnf("Attempting to delete %d groups, which exceeds the threshold of %d", len(groups), deletionThreshold)
         return false
