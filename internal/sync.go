@@ -374,6 +374,13 @@ func (s *syncGSuite) SyncGroupsUsers(query string) error {
 		return err
 	}
 	log.WithField("count", len(awsGroups)).Info("AWS groups retrieved")
+
+	// Don't continue if no Google groups are found but AWS has groups
+	if len(googleGroups) == 0 && len(awsGroups) > 0 {
+		log.Error("Google API returned zero groups but AWS has existing groups - aborting sync to prevent data loss")
+		return fmt.Errorf("google returned zero groups but %d aws groups exist - potential data loss prevented", len(awsGroups))
+	}
+
 	log.Info("get existing aws users")
 	awsUsers, err := s.aws.GetUsers()
 	if err != nil {
@@ -683,6 +690,12 @@ func getGroupOperations(awsGroups []*aws.Group, googleGroups []*admin.Group) (ad
 		"awsGroups":    len(awsGroups),
 		"googleGroups": len(googleGroups),
 	}).Info("Getting group operations")
+
+	if len(googleGroups) == 0 && len(awsGroups) > 0 {
+		log.Error("Google returned zero groups but AWS has existing groups - this would delete everything!")
+		return nil, nil, awsGroups
+	}
+
 	awsMap := make(map[string]*aws.Group)
 	googleMap := make(map[string]struct{})
 	for _, awsGroup := range awsGroups {
@@ -918,19 +931,19 @@ func (s *syncGSuite) includeGroup(name string) bool {
 }
 
 func checkUserDeletionThreshold(users []*aws.User) bool {
-    const deletionThreshold = 2
-    if len(users) > deletionThreshold {
-        log.Warnf("Attempting to delete %d users, which exceeds the threshold of %d", len(users), deletionThreshold)
-        return false
-    }
-    return true
+	const deletionThreshold = 2
+	if len(users) > deletionThreshold {
+		log.Warnf("Attempting to delete %d users, which exceeds the threshold of %d", len(users), deletionThreshold)
+		return false
+	}
+	return true
 }
 
 func checkGroupDeletionThreshold(groups []*aws.Group) bool {
-    const deletionThreshold = 2
-    if len(groups) > deletionThreshold {
-        log.Warnf("Attempting to delete %d groups, which exceeds the threshold of %d", len(groups), deletionThreshold)
-        return false
-    }
-    return true
+	const deletionThreshold = 2
+	if len(groups) > deletionThreshold {
+		log.Warnf("Attempting to delete %d groups, which exceeds the threshold of %d", len(groups), deletionThreshold)
+		return false
+	}
+	return true
 }
